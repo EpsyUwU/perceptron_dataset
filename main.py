@@ -9,7 +9,7 @@ from pandastable import Table
 
 
 class Perceptron:
-    def __init__(self, input_dim, learning_rate=0.01):
+    def __init__(self, input_dim, learning_rate):
         self.weights = np.random.randn(input_dim)
         self.bias = np.random.randn(1)
         self.learning_rate = learning_rate
@@ -109,6 +109,32 @@ class Perceptron:
         df = pd.DataFrame({'Weight Name': weight_names, 'Value': final_weights})
         return df
 
+    def plot_mse_evolution_multiple(self, X, y, epochs, error_threshold, learning_rates):
+        mse_curves = []
+
+        for lr in learning_rates:
+            self.__init__(input_dim=X.shape[1], learning_rate=lr)
+            self.train(X, y, epochs, error_threshold)
+            mse_curves.append(self.history['mse'])
+
+        epochs = max(len(mse_curve) for mse_curve in mse_curves)
+        fig, ax = plt.subplots()
+
+        for i, mse_curve in enumerate(mse_curves):
+            ax.plot(range(len(mse_curve)), mse_curve, label=f'Learning Rate = {learning_rates[i]}')
+
+        ax.set_xlabel('Epoch')
+        ax.set_ylabel('MSE')
+        ax.set_title('Comparativa de MSE para Diferentes Tasas de Aprendizaje')
+        ax.legend()
+        plt.grid(True)
+
+        plot_filename = 'mse_comparison_plot.png'
+        plt.savefig(plot_filename)
+        plt.close()
+
+        return plot_filename
+
     def plot_y_comparison(self, X, y_true):
         y_pred_final = self.history['y_pred'][-1]
         fig, ax = plt.subplots()
@@ -128,8 +154,6 @@ class Perceptron:
 
         return plot_filename
 
-
-
 def train_perceptron():
     learning_rate = float(entry_learning_rate.get())
     error_threshold = float(entry_error_threshold.get())
@@ -140,12 +164,14 @@ def train_perceptron():
     perceptron = Perceptron(input_dim, learning_rate)
     perceptron.train(X_train, y_train, epochs, error_threshold)
 
+
     # Habilitar los botones después del entrenamiento
     btn_plot_weights.config(state=tk.NORMAL)
     btn_plot_mse.config(state=tk.NORMAL)
     btn_show_gif.config(state=tk.NORMAL)
     btn_show_table.config(state=tk.NORMAL)
     btn_show_y_comparison.config(state=tk.NORMAL)
+    btn_show_mse_comparison.config(state=tk.NORMAL)
     messagebox.showinfo("Entrenamiento Completado", "El perceptrón ha sido entrenado con éxito.")
 
 
@@ -250,6 +276,28 @@ def show_y_comparison():
     plot_label.pack(padx=20, pady=20, fill=tk.BOTH, expand=True)
 
 
+def show_mse_comparison():
+    global perceptron
+
+    if 'perceptron' not in globals():
+        messagebox.showwarning("Error", "Primero debes entrenar el perceptrón.")
+        return
+
+    for widget in weight_frame.winfo_children():
+        widget.destroy()
+
+    error_threshold = float(entry_error_threshold.get())
+    epochs = int(entry_epochs.get())
+    learning_rates = [0.001, 0.002, 0.003, 0.004, 0.005]
+
+    plot_filename = perceptron.plot_mse_evolution_multiple(X_train, y_train, epochs=epochs, error_threshold=error_threshold, learning_rates=learning_rates)
+
+    plot_image = tk.PhotoImage(file=plot_filename)
+    plot_label = ttk.Label(weight_frame, image=plot_image)
+    plot_label.image = plot_image
+    plot_label.pack(padx=20, pady=20, fill=tk.BOTH, expand=True)
+
+
 # Cargar los datos desde un archivo Excel
 df = pd.read_excel("data.xlsx", skiprows=1)
 X = df[['x1', 'x2', 'x3', 'x4']].values
@@ -309,6 +357,10 @@ btn_show_table.config(state=tk.DISABLED)
 btn_show_y_comparison = ttk.Button(left_frame, text="Mostrar Comparación de Y", command=show_y_comparison)
 btn_show_y_comparison.pack(pady=10)
 btn_show_y_comparison.config(state=tk.DISABLED)
+
+btn_show_mse_comparison = ttk.Button(left_frame, text="Mostrar Comparativa de MSE", command=show_mse_comparison)
+btn_show_mse_comparison.pack(pady=10)
+btn_show_mse_comparison.config(state=tk.DISABLED)
 
 btn_show_gif = ttk.Button(left_frame, text="Mostrar Gif", command=show_gif)
 btn_show_gif.pack(pady=10)
